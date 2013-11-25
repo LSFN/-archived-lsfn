@@ -15,47 +15,14 @@ type StarshipListener struct {
 }
 
 func (listener *StarshipListener) Listen() {
-	var lengthToRead uint64
-	lengthVariant := new(common.Variant)
-	var currentReadBuffer []byte
 	for {
-		var data []byte
-		var numBytes uint64
-		n, err := listener.conn.Read(data)
-		numBytes = uint64(n)
+		message, err := listener.receiveSingleMessage()
 		if err != nil {
+			listener.conn.Close()
 			close(listener.Messages)
 			break
 		}
-		for numBytes > 0 {
-			if lengthToRead == 0 {
-				for _, b := range data {
-					lengthVariant.ConnectByte(b)
-					if lengthVariant.IsComplete() {
-						lengthToRead = lengthVariant.Uint64()
-						lengthVariant.Reset()
-						break
-					}
-				}
-			}
-			if lengthToRead > 0 {
-				if numBytes >= lengthToRead {
-					currentReadBuffer = append(currentReadBuffer, data[:lengthToRead]...)
-					data = data[lengthToRead:]
-					numBytes -= lengthToRead
-					lengthToRead = 0
-					var upMessage *common.STSup = new(common.STSup)
-					proto.Unmarshal(currentReadBuffer, upMessage)
-					listener.Messages <- upMessage
-				} else {
-					currentReadBuffer = append(currentReadBuffer, data...)
-					data = nil
-					numBytes -= lengthToRead
-					lengthToRead -= numBytes
-					numBytes = 0
-				}
-			}
-		}
+		listener.Messages <- message
 	}
 }
 

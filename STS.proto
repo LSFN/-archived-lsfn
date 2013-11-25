@@ -1,6 +1,6 @@
 option java_package = "org.lsfn.common";
 option java_outer_classname = "STS";
-package common;
+package lsfn;
 
 message STSup {
     message RCon {

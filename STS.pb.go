@@ -2,7 +2,7 @@
 // source: STS.proto
 // DO NOT EDIT!
 
-package common
+package lsfn
 
 import proto "code.google.com/p/goprotobuf/proto"
 import json "encoding/json"
@@ -257,7 +257,7 @@ func (m *STSup_RCon) GetCommand() string {
 }
 
 type STSup_JoinRequest struct {
-	Type             *STSup_JoinRequest_JoinType `protobuf:"varint,1,req,name=type,enum=common.STSup_JoinRequest_JoinType" json:"type,omitempty"`
+	Type             *STSup_JoinRequest_JoinType `protobuf:"varint,1,req,name=type,enum=lsfn.STSup_JoinRequest_JoinType" json:"type,omitempty"`
 	RejoinToken      *string                     `protobuf:"bytes,2,opt,name=rejoinToken" json:"rejoinToken,omitempty"`
 	XXX_unrecognized []byte                      `json:"-"`
 }
@@ -281,7 +281,7 @@ func (m *STSup_JoinRequest) GetRejoinToken() string {
 }
 
 type STSup_Connection struct {
-	ConnectionCommand *STSup_Connection_ConnectionCommand `protobuf:"varint,1,opt,name=connectionCommand,enum=common.STSup_Connection_ConnectionCommand" json:"connectionCommand,omitempty"`
+	ConnectionCommand *STSup_Connection_ConnectionCommand `protobuf:"varint,1,opt,name=connectionCommand,enum=lsfn.STSup_Connection_ConnectionCommand" json:"connectionCommand,omitempty"`
 	Host              *string                             `protobuf:"bytes,2,opt,name=host" json:"host,omitempty"`
 	Port              *uint32                             `protobuf:"varint,3,opt,name=port" json:"port,omitempty"`
 	XXX_unrecognized  []byte                              `json:"-"`
@@ -609,7 +609,7 @@ func (m *STSdown_JoinInfo) GetGameIDtoken() string {
 }
 
 type STSdown_JoinResponse struct {
-	Type             *STSdown_JoinResponse_Type `protobuf:"varint,1,req,name=type,enum=common.STSdown_JoinResponse_Type" json:"type,omitempty"`
+	Type             *STSdown_JoinResponse_Type `protobuf:"varint,1,req,name=type,enum=lsfn.STSdown_JoinResponse_Type" json:"type,omitempty"`
 	RejoinToken      *string                    `protobuf:"bytes,2,opt,name=rejoinToken" json:"rejoinToken,omitempty"`
 	XXX_unrecognized []byte                     `json:"-"`
 }
@@ -705,7 +705,7 @@ func (m *STSdown_VisualSensors) GetSpaceObjects() []*STSdown_VisualSensors_Space
 }
 
 type STSdown_VisualSensors_SpaceObject struct {
-	Type     *STSdown_VisualSensors_SpaceObject_Type  `protobuf:"varint,1,opt,name=type,enum=common.STSdown_VisualSensors_SpaceObject_Type" json:"type,omitempty"`
+	Type     *STSdown_VisualSensors_SpaceObject_Type  `protobuf:"varint,1,opt,name=type,enum=lsfn.STSdown_VisualSensors_SpaceObject_Type" json:"type,omitempty"`
 	Position *STSdown_VisualSensors_SpaceObject_Point `protobuf:"bytes,2,opt,name=position" json:"position,omitempty"`
 	// orientation is in radians
 	Orientation      *float64 `protobuf:"fixed64,3,opt,name=orientation" json:"orientation,omitempty"`
@@ -924,8 +924,8 @@ func (m *STSdown_Thrusters) GetRearRight() float64 {
 }
 
 func init() {
-	proto.RegisterEnum("common.STSup_JoinRequest_JoinType", STSup_JoinRequest_JoinType_name, STSup_JoinRequest_JoinType_value)
-	proto.RegisterEnum("common.STSup_Connection_ConnectionCommand", STSup_Connection_ConnectionCommand_name, STSup_Connection_ConnectionCommand_value)
-	proto.RegisterEnum("common.STSdown_JoinResponse_Type", STSdown_JoinResponse_Type_name, STSdown_JoinResponse_Type_value)
-	proto.RegisterEnum("common.STSdown_VisualSensors_SpaceObject_Type", STSdown_VisualSensors_SpaceObject_Type_name, STSdown_VisualSensors_SpaceObject_Type_value)
+	proto.RegisterEnum("lsfn.STSup_JoinRequest_JoinType", STSup_JoinRequest_JoinType_name, STSup_JoinRequest_JoinType_value)
+	proto.RegisterEnum("lsfn.STSup_Connection_ConnectionCommand", STSup_Connection_ConnectionCommand_name, STSup_Connection_ConnectionCommand_value)
+	proto.RegisterEnum("lsfn.STSdown_JoinResponse_Type", STSdown_JoinResponse_Type_name, STSdown_JoinResponse_Type_value)
+	proto.RegisterEnum("lsfn.STSdown_VisualSensors_SpaceObject_Type", STSdown_VisualSensors_SpaceObject_Type_name, STSdown_VisualSensors_SpaceObject_Type_value)
 }

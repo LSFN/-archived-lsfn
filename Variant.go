@@ -1,4 +1,4 @@
-package common
+package lsfn
 
 type Variant struct {
 	data []byte
