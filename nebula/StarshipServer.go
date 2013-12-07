@@ -15,7 +15,7 @@ type StarshipServer struct {
 	orphanShipIDs    map[string]int
 	joinedClients    map[string]*StarshipListener
 	networkChannels  map[string]chan *lsfn.STSup
-	listenConnection *net.TCPListener
+	listenConnection net.Listener
 	gameID           string
 	allowJoin        bool
 }
@@ -29,9 +29,8 @@ func NewStarshipServer() *StarshipServer {
 	return s
 }
 
-func (s *StarshipServer) handleConnectingStarship(conn *net.TCPConn) {
+func (s *StarshipServer) handleConnectingStarship(conn net.Conn) {
 	fmt.Println("New client is joining")
-	conn.SetKeepAlive(true)
 	starship := NewStarshipListener(conn)
 	s.unjoinedClients[starship] = 1
 	shipID, err := starship.Handshake(s.gameID, s.allowJoin, s.orphanShipIDs)
@@ -50,9 +49,8 @@ func (s *StarshipServer) handleConnectingStarship(conn *net.TCPConn) {
 }
 
 func (s *StarshipServer) Listen() {
-	var err error
 	conn, err := net.Listen("tcp", ":39461")
-	s.listenConnection = conn.(*net.TCPListener)
+	s.listenConnection = conn
 	if err != nil {
 		return
 	}

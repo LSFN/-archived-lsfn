@@ -12,11 +12,11 @@ import (
 )
 
 type StarshipListener struct {
-	conn     *net.TCPConn
+	conn     net.Conn
 	Messages chan *lsfn.STSup
 }
 
-func NewStarshipListener(conn *net.TCPConn) *StarshipListener {
+func NewStarshipListener(conn net.Conn) *StarshipListener {
 	listener := new(StarshipListener)
 	listener.conn = conn
 	listener.Messages = make(chan *lsfn.STSup)
@@ -41,6 +41,7 @@ func (listener *StarshipListener) receiveSingleMessage() (*lsfn.STSup, error) {
 	singleByte := make([]byte, 1)
 	fmt.Println(1)
 	for !lengthVariant.IsComplete() {
+		fmt.Println("reading single byte")
 		bytes, err := listener.conn.Read(singleByte)
 		fmt.Println(bytes, singleByte)
 		if err != nil {

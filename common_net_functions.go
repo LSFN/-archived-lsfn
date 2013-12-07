@@ -2,34 +2,35 @@ package lsfn
 
 import (
 	"fmt"
+	"io"
 	"net"
 
 	"code.google.com/p/goprotobuf/proto"
 )
 
-func ReceiveSingleMessage(conn *net.TCPConn, message proto.Message) error {
+func ReceiveSingleMessage(conn net.Conn, message proto.Message) error {
 	// Read off the length of the message into a variant
 	lengthVariant := NewVariant()
 	singleByte := make([]byte, 1)
 	for !lengthVariant.IsComplete() {
-		bytes, err := conn.Read(singleByte)
+		numBytes, err := conn.Read(singleByte)
 		if err != nil {
 			return err
 		}
-		if bytes == 1 {
+		if numBytes == 1 {
 			lengthVariant.ConnectByte(singleByte[0])
 		}
 	}
 
 	// Receive a message of the stated length
 	receiverSlice := make([]byte, lengthVariant.Uint64())
-	var bytes int
-	for bytes < len(receiverSlice) {
-		x, err := conn.Read(receiverSlice[bytes:])
+	var numBytes int
+	for numBytes < len(receiverSlice) {
+		x, err := conn.Read(receiverSlice[numBytes:])
 		if err != nil {
 			return err
 		}
-		bytes += x
+		numBytes += x
 	}
 
 	// Unmarshal the message into a protobuf structure
@@ -41,36 +42,62 @@ func ReceiveSingleMessage(conn *net.TCPConn, message proto.Message) error {
 	return err
 }
 
-func SendSingleMessage(conn *net.TCPConn, message proto.Message) error {
+func SendSingleMessage(conn net.Conn, message proto.Message) error {
 	rawMessage, err := proto.Marshal(message)
 	if err != nil {
 		return err
 	}
 	fmt.Println("raw message", rawMessage)
 
-	var bytes int
 	variantLength := NewVariant()
 	variantLength.FromUint64(uint64(len(rawMessage)))
 	rawLength := variantLength.Bytes()
-	fmt.Println("variant length", rawLength)
-	for bytes < len(rawLength) {
-		x, err := conn.Write(rawLength[bytes:])
-		if err != nil {
-			return err
-		}
-		bytes += x
+	fmt.Printf("variant length %v %q\n", rawLength, rawLength)
+	err = write(conn, rawLength)
+	if err != nil {
+		fmt.Printf("%v %T\n", err, err)
+		return err
 	}
 	fmt.Println("Written variant")
 
-	bytes = 0
-	for bytes < len(rawMessage) {
-		x, err := conn.Write(rawMessage[bytes:])
-		if err != nil {
-			return err
-		}
-		bytes += x
+	err = write(conn, rawMessage)
+	if err != nil {
+		return err
 	}
 	fmt.Println("Written message")
 
+	return nil
+}
+
+// read is used to ensure that the given number of bytes
+// are read if possible, even if multiple calls to Read
+// are required.
+func read(r io.Reader, i int) ([]byte, error) {
+	out := make([]byte, i)
+	in := out[:]
+	for i > 0 {
+		if n, err := r.Read(in); err != nil {
+			return nil, err
+		} else {
+			in = in[n:]
+			i -= n
+		}
+	}
+	return out, nil
+}
+
+// write is used to ensure that the given data is written
+// if possible, even if multiple calls to Write are
+// required.
+func write(w io.Writer, data []byte) error {
+	i := len(data)
+	for i > 0 {
+		if n, err := w.Write(data); err != nil {
+			return err
+		} else {
+			data = data[n:]
+			i -= n
+		}
+	}
 	return nil
 }

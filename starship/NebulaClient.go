@@ -3,35 +3,25 @@ package starship
 import (
 	"fmt"
 	"net"
-	"strconv"
 
 	"github.com/LSFN/lsfn"
 )
 
 type NebulaClient struct {
 	starshipID string
-	conn       *net.TCPConn
+	conn       net.Conn
 	gameID     string
 }
 
 // Perform a joining handshake with the Nebula
 // We don't change the client struct's values until we know that the join has succeeded
 func (client *NebulaClient) Join(host string, port int) bool {
-	var err error
-	var raddr *net.TCPAddr
-	raddr, err = net.ResolveTCPAddr("tcp", host+":"+strconv.Itoa(port))
-	if err != nil {
-		fmt.Println(1, err)
-		return false
-	}
-	fmt.Println("Address resolved")
-
-	var conn *net.TCPConn
-	conn, err = net.DialTCP("tcp", nil, raddr)
+	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		fmt.Println(2, err)
 		return false
 	}
+	client.conn = conn
 	fmt.Println("Connection made")
 
 	// Receive the join info message
@@ -50,19 +40,27 @@ func (client *NebulaClient) Join(host string, port int) bool {
 	var join = lsfn.STSup_JoinRequest_JOIN
 	var rejoin = lsfn.STSup_JoinRequest_REJOIN
 	if client.gameID == currentGameID {
-		lsfn.SendSingleMessage(client.conn, &lsfn.STSup{
+		err = lsfn.SendSingleMessage(client.conn, &lsfn.STSup{
 			JoinRequest: &lsfn.STSup_JoinRequest{
 				Type:        &rejoin,
 				RejoinToken: &client.starshipID,
 			},
 		})
+		if err != nil {
+			fmt.Println(err)
+			return false
+		}
 	} else {
 		if allowingNewClients {
-			lsfn.SendSingleMessage(client.conn, &lsfn.STSup{
+			err = lsfn.SendSingleMessage(client.conn, &lsfn.STSup{
 				JoinRequest: &lsfn.STSup_JoinRequest{
 					Type: &join,
 				},
 			})
+			if err != nil {
+				fmt.Println(err)
+				return false
+			}
 		} else {
 			conn.Close()
 			fmt.Println(4, err)
