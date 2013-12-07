@@ -1,4 +1,4 @@
 lsfn
 ====
 
-Repository for all Golang implementations of LSFN
+Repository for all Go implementations of LSFN
