@@ -10,35 +10,27 @@ import (
 func ReceiveSingleMessage(conn net.Conn, message proto.Message) error {
 	// Read off the length of the message into a variant
 	lengthVariant := NewVariant()
-	singleByte := make([]byte, 1)
 	for !lengthVariant.IsComplete() {
-		numBytes, err := conn.Read(singleByte)
+		singleByte, err := read(conn, 1)
 		if err != nil {
 			return err
 		}
-		if numBytes == 1 {
-			lengthVariant.ConnectByte(singleByte[0])
-		}
+		lengthVariant.ConnectByte(singleByte[0])
 	}
 
 	// Receive a message of the stated length
-	receiverSlice := make([]byte, lengthVariant.Uint64())
-	var numBytes int
-	for numBytes < len(receiverSlice) {
-		x, err := conn.Read(receiverSlice[numBytes:])
-		if err != nil {
-			return err
-		}
-		numBytes += x
+	receiverSlice, err := read(conn, int(lengthVariant.Uint64()))
+	if err != nil {
+		return err
 	}
 
 	// Unmarshal the message into a protobuf structure
-	err := proto.Unmarshal(receiverSlice, message)
+	err = proto.Unmarshal(receiverSlice, message)
 	if err != nil {
-		message = nil
+		return err
 	}
 
-	return err
+	return nil
 }
 
 func SendSingleMessage(conn net.Conn, message proto.Message) error {
