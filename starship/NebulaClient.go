@@ -18,23 +18,19 @@ type NebulaClient struct {
 func (client *NebulaClient) Join(host string, port int) bool {
 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
-		fmt.Println(2, err)
 		return false
 	}
 	client.conn = conn
-	fmt.Println("Connection made")
 
 	// Receive the join info message
 	joinInfo := new(lsfn.STSdown)
 	err = lsfn.ReceiveSingleMessage(conn, joinInfo)
 	if err != nil {
 		conn.Close()
-		fmt.Println(3, err)
 		return false
 	}
 	currentGameID := joinInfo.GetJoinInfo().GetGameIDtoken()
 	allowingNewClients := joinInfo.GetJoinInfo().GetAllowJoin()
-	fmt.Println("Received join info:", currentGameID, allowingNewClients)
 
 	// Determine whether to connect as a new client, rejoin or abandon the Nebula
 	var join = lsfn.STSup_JoinRequest_JOIN
@@ -47,7 +43,6 @@ func (client *NebulaClient) Join(host string, port int) bool {
 			},
 		})
 		if err != nil {
-			fmt.Println(err)
 			return false
 		}
 	} else {
@@ -58,26 +53,21 @@ func (client *NebulaClient) Join(host string, port int) bool {
 				},
 			})
 			if err != nil {
-				fmt.Println(err)
 				return false
 			}
 		} else {
 			conn.Close()
-			fmt.Println(4, err)
 			return false
 		}
 	}
-	fmt.Println("Sent join request")
 
 	// Receive the response
 	joinResponse := new(lsfn.STSdown)
 	err = lsfn.ReceiveSingleMessage(conn, joinResponse)
 	if err != nil {
 		conn.Close()
-		fmt.Println(5, err)
 		return false
 	}
-	fmt.Println("Received join response")
 
 	switch joinResponse.GetJoinResponse().GetType() {
 	case lsfn.STSdown_JoinResponse_JOIN_ACCEPTED:
@@ -91,7 +81,6 @@ func (client *NebulaClient) Join(host string, port int) bool {
 	default:
 		//lsfn.STSdown_JoinResponse_JOIN_REJECTED:
 		conn.Close()
-		fmt.Println(6, err)
 		return false
 	}
 }

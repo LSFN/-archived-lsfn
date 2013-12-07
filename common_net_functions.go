@@ -1,7 +1,6 @@
 package lsfn
 
 import (
-	"fmt"
 	"io"
 	"net"
 
@@ -47,24 +46,19 @@ func SendSingleMessage(conn net.Conn, message proto.Message) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("raw message", rawMessage)
 
 	variantLength := NewVariant()
 	variantLength.FromUint64(uint64(len(rawMessage)))
 	rawLength := variantLength.Bytes()
-	fmt.Printf("variant length %v %q\n", rawLength, rawLength)
 	err = write(conn, rawLength)
 	if err != nil {
-		fmt.Printf("%v %T\n", err, err)
 		return err
 	}
-	fmt.Println("Written variant")
 
 	err = write(conn, rawMessage)
 	if err != nil {
 		return err
 	}
-	fmt.Println("Written message")
 
 	return nil
 }
