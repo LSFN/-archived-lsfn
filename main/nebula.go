@@ -5,16 +5,21 @@ import (
 	"fmt"
 	"os"
 
-	"lsfn/nebula"
+	"github.com/LSFN/lsfn/nebula"
 )
 
 func main() {
-	var server *StarshipServer = new(StarshipServer)
+	server := nebula.NewStarshipServer()
 	go server.Listen()
+	if server.Listening() {
+		return
+	} else {
+		fmt.Println("Listening for new connections")
+	}
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		line := scanner.Text()
-
+		fmt.Println(line)
 	}
 	if err := scanner.Err(); err != nil {
 		panic(err)

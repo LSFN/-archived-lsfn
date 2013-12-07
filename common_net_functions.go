@@ -1,14 +1,15 @@
 package lsfn
 
 import (
+	"fmt"
 	"net"
 
 	"code.google.com/p/goprotobuf/proto"
 )
 
-func ReceiveSingleMessage(conn *net.TCPConn, message *proto.Message) error {
+func ReceiveSingleMessage(conn *net.TCPConn, message proto.Message) error {
 	// Read off the length of the message into a variant
-	lengthVariant := new(Variant)
+	lengthVariant := NewVariant()
 	singleByte := make([]byte, 1)
 	for !lengthVariant.IsComplete() {
 		bytes, err := conn.Read(singleByte)
@@ -32,7 +33,7 @@ func ReceiveSingleMessage(conn *net.TCPConn, message *proto.Message) error {
 	}
 
 	// Unmarshal the message into a protobuf structure
-	err := proto.Unmarshal(receiverSlice, *message)
+	err := proto.Unmarshal(receiverSlice, message)
 	if err != nil {
 		message = nil
 	}
@@ -40,16 +41,18 @@ func ReceiveSingleMessage(conn *net.TCPConn, message *proto.Message) error {
 	return err
 }
 
-func SendSingleMessage(conn *net.TCPConn, message *proto.Message) error {
-	rawMessage, err := proto.Marshal(*message)
+func SendSingleMessage(conn *net.TCPConn, message proto.Message) error {
+	rawMessage, err := proto.Marshal(message)
 	if err != nil {
 		return err
 	}
+	fmt.Println("raw message", rawMessage)
 
 	var bytes int
-	variantLength := new(Variant)
+	variantLength := NewVariant()
 	variantLength.FromUint64(uint64(len(rawMessage)))
 	rawLength := variantLength.Bytes()
+	fmt.Println("variant length", rawLength)
 	for bytes < len(rawLength) {
 		x, err := conn.Write(rawLength[bytes:])
 		if err != nil {
@@ -57,6 +60,7 @@ func SendSingleMessage(conn *net.TCPConn, message *proto.Message) error {
 		}
 		bytes += x
 	}
+	fmt.Println("Written variant")
 
 	bytes = 0
 	for bytes < len(rawMessage) {
@@ -66,6 +70,7 @@ func SendSingleMessage(conn *net.TCPConn, message *proto.Message) error {
 		}
 		bytes += x
 	}
+	fmt.Println("Written message")
 
 	return nil
 }

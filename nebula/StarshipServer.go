@@ -6,32 +6,46 @@ import (
 
 	"code.google.com/p/uuid"
 
-	"lsfn/common"
+	"github.com/LSFN/lsfn"
 )
 
 type StarshipServer struct {
+	isListening      bool
 	unjoinedClients  map[*StarshipListener]int
 	orphanShipIDs    map[string]int
 	joinedClients    map[string]*StarshipListener
-	networkChannels  map[string]chan *common.STSup
+	networkChannels  map[string]chan *lsfn.STSup
 	listenConnection *net.TCPListener
 	gameID           string
 	allowJoin        bool
 }
 
+func NewStarshipServer() *StarshipServer {
+	s := new(StarshipServer)
+	s.unjoinedClients = make(map[*StarshipListener]int)
+	s.orphanShipIDs = make(map[string]int)
+	s.joinedClients = make(map[string]*StarshipListener)
+	s.networkChannels = make(map[string]chan *lsfn.STSup)
+	return s
+}
+
 func (s *StarshipServer) handleConnectingStarship(conn *net.TCPConn) {
+	fmt.Println("New client is joining")
 	conn.SetKeepAlive(true)
-	starship := &StarshipListener{conn: conn}
+	starship := NewStarshipListener(conn)
 	s.unjoinedClients[starship] = 1
-	shipID := starship.Handshake(s.gameID, s.allowJoin, s.orphanShipIDs)
-	if shipID != "" {
+	shipID, err := starship.Handshake(s.gameID, s.allowJoin, s.orphanShipIDs)
+	if shipID == "" {
+		if err != nil {
+			fmt.Println(err)
+		}
+		delete(s.unjoinedClients, starship)
+		starship.Disconnect()
+	} else {
 		delete(s.unjoinedClients, starship)
 		s.joinedClients[shipID] = starship
 		fmt.Println("Client with id " + shipID + " joined successfully")
 		go starship.Listen()
-	} else {
-		delete(s.unjoinedClients, starship)
-		starship.Disconnect()
 	}
 }
 
@@ -44,6 +58,7 @@ func (s *StarshipServer) Listen() {
 	}
 	s.gameID = uuid.New()
 	s.allowJoin = true
+	s.isListening = true
 	for {
 		conn, err := s.listenConnection.Accept()
 		if err != nil {
@@ -60,6 +75,10 @@ func (s *StarshipServer) shutDown() {
 		client.Disconnect()
 	}
 
+}
+
+func (s *StarshipServer) Listening() bool {
+	return s.isListening
 }
 
 func (s *StarshipServer) processIncomingMessages() {

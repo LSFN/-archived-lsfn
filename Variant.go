@@ -4,11 +4,20 @@ type Variant struct {
 	data []byte
 }
 
+func NewVariant() *Variant {
+	v := new(Variant)
+	v.data = make([]byte, 0, 8)
+	return v
+}
+
 func (v *Variant) ConnectByte(b byte) {
 	v.data = append(v.data, b)
 }
 
 func (v *Variant) IsComplete() bool {
+	if len(v.data) == 0 {
+		return false
+	}
 	return v.data[len(v.data)-1]&0x80 == 0
 }
 

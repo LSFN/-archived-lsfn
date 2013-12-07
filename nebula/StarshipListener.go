@@ -1,17 +1,26 @@
 package nebula
 
 import (
+	"errors"
+	"fmt"
 	"net"
 
 	"code.google.com/p/goprotobuf/proto"
 	"code.google.com/p/uuid"
 
-	"lsfn/common"
+	"github.com/LSFN/lsfn"
 )
 
 type StarshipListener struct {
 	conn     *net.TCPConn
-	Messages chan *common.STSup
+	Messages chan *lsfn.STSup
+}
+
+func NewStarshipListener(conn *net.TCPConn) *StarshipListener {
+	listener := new(StarshipListener)
+	listener.conn = conn
+	listener.Messages = make(chan *lsfn.STSup)
+	return listener
 }
 
 func (listener *StarshipListener) Listen() {
@@ -26,12 +35,14 @@ func (listener *StarshipListener) Listen() {
 	}
 }
 
-func (listener *StarshipListener) receiveSingleMessage() (*common.STSup, error) {
+func (listener *StarshipListener) receiveSingleMessage() (*lsfn.STSup, error) {
 	// Read off the length of the message into a variant
-	lengthVariant := new(common.Variant)
+	lengthVariant := lsfn.NewVariant()
 	singleByte := make([]byte, 1)
-	for !lengthVariant.isComplete() {
+	fmt.Println(1)
+	for !lengthVariant.IsComplete() {
 		bytes, err := listener.conn.Read(singleByte)
+		fmt.Println(bytes, singleByte)
 		if err != nil {
 			return nil, err
 		}
@@ -39,9 +50,10 @@ func (listener *StarshipListener) receiveSingleMessage() (*common.STSup, error) 
 			lengthVariant.ConnectByte(singleByte[0])
 		}
 	}
+	fmt.Println(2)
 
 	// Receive a message of the stated length
-	receiverSlice := make([]byte, lengthVariant.Uint64)
+	receiverSlice := make([]byte, lengthVariant.Uint64())
 	var bytes int
 	for bytes < len(receiverSlice) {
 		x, err := listener.conn.Read(receiverSlice[bytes:])
@@ -50,33 +62,35 @@ func (listener *StarshipListener) receiveSingleMessage() (*common.STSup, error) 
 		}
 		bytes += x
 	}
+	fmt.Println(3)
 
 	// Unmarshal the message into a protobuf structure
-	result := new(common.STSup)
+	result := new(lsfn.STSup)
 	err := proto.Unmarshal(receiverSlice, result)
 	if err != nil {
 		result = nil
 	}
+	fmt.Println(4)
 
 	return result, err
 }
 
-func (listener *StarshipListener) SendMessage(downMessage *common.STSdown) {
+func (listener *StarshipListener) SendMessage(downMessage *lsfn.STSdown) {
 	err := listener.sendSingleMessage(downMessage)
 	if err != nil {
 		listener.Disconnect()
 	}
 }
 
-func (listener *StarshipListener) sendSingleMessage(downMessage *common.STSdown) error {
+func (listener *StarshipListener) sendSingleMessage(downMessage *lsfn.STSdown) error {
 	rawMessage, err := proto.Marshal(downMessage)
 	if err != nil {
 		return err
 	}
 
 	var bytes int
-	variantLength := new(common.Variant)
-	variantLength.FromUint64(len(rawMessage))
+	variantLength := lsfn.NewVariant()
+	variantLength.FromUint64(uint64(len(rawMessage)))
 	rawLength := variantLength.Bytes()
 	for bytes < len(rawLength) {
 		x, err := listener.conn.Write(rawLength[bytes:])
@@ -104,53 +118,61 @@ func (listener *StarshipListener) Disconnect() {
 }
 
 // TODO possibly disconnect
-func (listener *StarshipListener) Handshake(gameID string, allowJoin bool, rejoinIDs map[string]int) string {
+func (listener *StarshipListener) Handshake(gameID string, allowJoin bool, rejoinIDs map[string]int) (string, error) {
 	// Send the JoinInfo message
-	joinInfoMessage := &common.STSdown{
-		JoinInfo: &common.STSdown_JoinInfo{
+	joinInfoMessage := &lsfn.STSdown{
+		JoinInfo: &lsfn.STSdown_JoinInfo{
 			AllowJoin:   &allowJoin,
 			GameIDtoken: &gameID,
 		},
 	}
 	err := listener.sendSingleMessage(joinInfoMessage)
+	fmt.Println("Sent join info")
 	// if joins are not allowed then when allowJoin is false, handshakes will end here
 	if err != nil {
-		return ""
+		return "", err
 	}
 
 	// Receive the JoinRequest message
 	joinRequestMessage, err := listener.receiveSingleMessage()
 	if err != nil {
-		return ""
+		return "", err
 	}
 	if joinRequestMessage.JoinRequest == nil {
-		return ""
+		return "", errors.New("Received message does not have JoinRequest field set")
 	}
+	fmt.Println("Received join request")
 
 	// Send the JoinResponse message
 	joinType := joinRequestMessage.GetJoinRequest().GetType()
-	var joinAccept = common.STSdown_JoinResponse_JOIN_ACCEPTED
-	var joinReject = common.STSdown_JoinResponse_JOIN_REJECTED
-	var rejoinAccept = common.STSdown_JoinResponse_REJOIN_ACCEPTED
-	if joinType == common.STSup_JoinRequest_JOIN {
+	var joinAccept = lsfn.STSdown_JoinResponse_JOIN_ACCEPTED
+	var joinReject = lsfn.STSdown_JoinResponse_JOIN_REJECTED
+	var rejoinAccept = lsfn.STSdown_JoinResponse_REJOIN_ACCEPTED
+	if joinType == lsfn.STSup_JoinRequest_JOIN {
+		fmt.Println("Client is trying to join")
 		if allowJoin {
+			fmt.Println("Client is being allowed to join")
 			id := uuid.New()
-			listener.sendSingleMessage(&common.STSdown{
-				JoinResponse: &common.STSdown_JoinResponse{
+			listener.sendSingleMessage(&lsfn.STSdown{
+				JoinResponse: &lsfn.STSdown_JoinResponse{
 					Type:        &joinAccept,
 					RejoinToken: &id,
 				},
 			})
-			return id
+			fmt.Println("Sent join response")
+			return id, nil
 		} else {
-			listener.sendSingleMessage(&common.STSdown{
-				JoinResponse: &common.STSdown_JoinResponse{
+			fmt.Println("Client in not allowed to join")
+			listener.sendSingleMessage(&lsfn.STSdown{
+				JoinResponse: &lsfn.STSdown_JoinResponse{
 					Type: &joinReject,
 				},
 			})
-			return ""
+			fmt.Println("Sent join response")
+			return "", nil
 		}
 	} else {
+		fmt.Println("Client is trying to rejoin")
 		var successfulRejoin bool = false
 		if joinRequestMessage.GetJoinRequest().RejoinToken != nil {
 			rejoinID := joinRequestMessage.GetJoinRequest().GetRejoinToken()
@@ -159,21 +181,25 @@ func (listener *StarshipListener) Handshake(gameID string, allowJoin bool, rejoi
 			}
 		}
 		if successfulRejoin {
+			fmt.Println("Client rejoined successfully")
 			rejoinID := joinRequestMessage.GetJoinRequest().GetRejoinToken()
-			listener.sendSingleMessage(&common.STSdown{
-				JoinResponse: &common.STSdown_JoinResponse{
+			listener.sendSingleMessage(&lsfn.STSdown{
+				JoinResponse: &lsfn.STSdown_JoinResponse{
 					Type:        &rejoinAccept,
 					RejoinToken: &rejoinID,
 				},
 			})
-			return joinRequestMessage.GetJoinRequest().GetRejoinToken()
+			fmt.Println("Sent join response")
+			return joinRequestMessage.GetJoinRequest().GetRejoinToken(), nil
 		} else {
-			listener.sendSingleMessage(&common.STSdown{
-				JoinResponse: &common.STSdown_JoinResponse{
+			fmt.Println("Client failed to rejoin")
+			listener.sendSingleMessage(&lsfn.STSdown{
+				JoinResponse: &lsfn.STSdown_JoinResponse{
 					Type: &joinReject,
 				},
 			})
-			return ""
+			fmt.Println("Sent join response")
+			return "", nil
 		}
 	}
 }
